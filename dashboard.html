@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart Bookmark Dashboard</title>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" type="text/css" href="dashboard.css">
+</head>
+<body>
+  <!-- Loader overlay shown while dashboard data is loading -->
+  <div id="dashLoader" class="dash-loader" style="display:none;">
+    <div class="spinner"></div>
+  </div>
+  <div class="dashboard">
+    <!-- Sidebar with categories -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Categories</h2>
+        <div id="catCount" class="small-text"></div>
+      </div>
+      <ul id="categoryList" class="category-list"></ul>
+    </aside>
+    <!-- Main content -->
+    <main class="main">
+      <header class="main-header">
+        <div class="main-header-left">
+          <h2 id="selectedCategory">All</h2>
+          <span id="itemCount" class="small-text"></span>
+        </div>
+        <div class="main-header-right">
+          <input type="text" id="dashSearch" placeholder="Search bookmarks..." class="search-input">
+          <button id="dashOrganize" class="btn primary">Organize All</button>
+          <button id="dashSettings" class="btn secondary">Settings</button>
+        </div>
+      </header>
+      <!-- Progress for reorganization -->
+      <div id="dashProgressContainer" class="progress-container" style="display:none;">
+        <div id="dashProgressBar" class="progress-bar"></div>
+        <div id="dashProgressText" class="progress-text"></div>
+      </div>
+      <!-- Bookmark list -->
+      <div id="bookmarkList" class="bookmark-list"></div>
+    <!-- Edit modal overlay -->
+    <div id="editOverlay" class="edit-overlay" style="display:none;">
+      <div class="edit-modal">
+        <h3>Edit Bookmark</h3>
+        <div id="editCategoriesContainer"></div>
+        <div class="form-group">
+          <label for="editTagsInput">Tags (comma separated)</label>
+          <input type="text" id="editTagsInput" placeholder="e.g. react, api">
+        </div>
+        <div style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end;">
+          <button id="editSaveBtn" class="btn">Save</button>
+          <button id="editCancelBtn" class="btn secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+    </main>
+  </div>
+  <script src="dashboard.js"></script>
+</body>
+</html>

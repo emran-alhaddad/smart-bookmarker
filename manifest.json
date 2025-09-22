@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "Smart Bookmark Organizer",
+  "version": "2.0.0",
+  "description": "Organize your bookmarks with accurate AI categorization and a rich dashboard.",
+  "permissions": [
+    "bookmarks",
+    "storage",
+    "tabs",
+    "activeTab",
+    "contextMenus",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Smart Bookmark Organizer",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "commands": {
+    "quick_add": {
+      "suggested_key": {
+        "default": "Alt+Shift+B",
+        "mac": "Command+Shift+Y"
+      },
+      "description": "AI bookmark the current tab"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src * data: blob:"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["dashboard.html", "dashboard.js", "dashboard.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

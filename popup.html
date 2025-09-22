@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart Bookmark Organizer</title>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" type="text/css" href="popup.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header with counts -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <div class="logo-icon">📚</div>
+          <div class="logo-text">
+            <h1>Smart Bookmarks</h1>
+            <p>AI Bookmark Organizer</p>
+          </div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="stats">
+          <div class="stat-item">
+            <span class="stat-icon">📊</span>
+            <span class="stat-label">Total</span>
+            <span class="stat-value" id="totalCount">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">📁</span>
+            <span class="stat-label">Categories</span>
+            <span class="stat-value" id="categoriesCount">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">⭐</span>
+            <span class="stat-label">Favorites</span>
+            <span class="stat-value" id="favoritesCount">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-icon">🕒</span>
+            <span class="stat-label">Recent</span>
+            <span class="stat-value" id="recentCount">0</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Quick Add -->
+    <section class="quick-add">
+      <div class="quick-add-main">
+        <div class="quick-add-icon">✨</div>
+        <div class="quick-add-content">
+          <h3>AI Quick Add</h3>
+          <p>Add and auto‑categorize bookmarks instantly</p>
+        </div>
+      </div>
+      <div class="quick-add-actions">
+        <div class="url-input-container">
+          <input type="text" id="urlInput" placeholder="Paste URL here..." class="url-input">
+          <button id="quickAddBtn" class="quick-add-btn">✨</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI Features list -->
+    <section class="ai-features">
+      <h3>✨ AI Features</h3>
+      <div class="features-list">
+        <div class="feature-item"><span class="feature-icon">🤖</span><span class="feature-text">Auto‑categorization</span></div>
+        <div class="feature-item"><span class="feature-icon">🔍</span><span class="feature-text">Smart search</span></div>
+        <div class="feature-item"><span class="feature-icon">📁</span><span class="feature-text">Folder organization</span></div>
+        <div class="feature-item"><span class="feature-icon">🏷️</span><span class="feature-text">Tag suggestions</span></div>
+      </div>
+    </section>
+
+    <!-- Search -->
+    <section class="search-section">
+      <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Search bookmarks..." class="search-input">
+        <button class="filter-btn" id="filterBtn"><span>🔽</span><span>Filter</span></button>
+      </div>
+    </section>
+
+    <!-- Progress bar -->
+    <div id="progressContainer" class="progress-container" style="display:none;">
+      <div id="progressBar" class="progress-bar"></div>
+      <div id="progressText" class="progress-text"></div>
+    </div>
+
+    <!-- Bookmarks section -->
+    <section class="bookmarks-section">
+      <div class="section-header">
+        <h2>Your Bookmarks</h2>
+        <div class="bookmark-stats"><span id="bookmarkStats">0 categories, 0 bookmarks</span></div>
+        <div class="view-toggle">
+          <button class="view-btn" id="foldersView">📁 Folders</button>
+          <button class="view-btn active" id="gridView">⊞ Grid</button>
+        </div>
+      </div>
+      <div class="bookmarks-grid" id="bookmarksGrid"></div>
+    </section>
+
+    <!-- Action Buttons -->
+    <section class="actions">
+      <button id="organizeBtn" class="action-btn primary"><span class="btn-icon">🤖</span><span>Organize All Bookmarks</span></button>
+      <button id="addCurrentBtn" class="action-btn secondary"><span class="btn-icon">⭐</span><span>Add Current Page</span></button>
+    </section>
+
+    <div id="status" class="status-message" style="display:none;"></div>
+
+    <!-- Footer actions -->
+    <section class="footer-actions">
+      <button id="dashboardBtn" class="action-btn tertiary"><span class="btn-icon">📂</span><span>Dashboard</span></button>
+      <button id="settingsBtn" class="action-btn tertiary"><span class="btn-icon">⚙️</span><span>Settings</span></button>
+    </section>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
