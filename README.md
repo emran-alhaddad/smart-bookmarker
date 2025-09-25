@@ -1,6 +1,6 @@
 # 🧠 Smart Bookmark Organizer
 
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/yourusername/smart-bookmarks-overhaul-final-v8)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/emran-alhaddad/smart-bookmarker)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-Extension-green.svg)](https://developer.chrome.com/docs/extensions/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -40,7 +40,7 @@
 ### Manual Installation (Developer Mode)
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/smart-bookmarks-overhaul-final-v8.git
+   git clone https://github.com/emran-alhaddad/smart-bookmarker.git
    ```
 
 2. Open Chrome and navigate to `chrome://extensions/`
@@ -88,7 +88,7 @@
 
 ### Core Components
 ```
-smart-bookmarks-overhaul-final-v8/
+smart-bookmarker/
 ├── manifest.json          # Extension configuration
 ├── background.js          # Service worker (main logic)
 ├── ai_service.js         # AI provider integrations
@@ -139,8 +139,8 @@ The extension uses sophisticated AI to categorize bookmarks based on:
 ### Setup Development Environment
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/smart-bookmarks-overhaul-final-v8.git
-cd smart-bookmarks-overhaul-final-v8
+git clone https://github.com/emran-alhaddad/smart-bookmarker.git
+cd smart-bookmarker
 
 # Load in Chrome
 # 1. Open chrome://extensions/
@@ -182,9 +182,9 @@ cd smart-bookmarks-overhaul-final-v8
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/smart-bookmarks-overhaul-final-v8/issues)
-- **Feature Requests**: [GitHub Discussions](https://github.com/yourusername/smart-bookmarks-overhaul-final-v8/discussions)
-- **Documentation**: [Wiki](https://github.com/yourusername/smart-bookmarks-overhaul-final-v8/wiki)
+- **Issues**: [GitHub Issues](https://github.com/emran-alhaddad/smart-bookmarker/issues)
+- **Feature Requests**: [GitHub Discussions](https://github.com/emran-alhaddad/smart-bookmarker/discussions)
+- **Documentation**: [Wiki](https://github.com/emran-alhaddad/smart-bookmarker/wiki)
 
 ## 📄 License
 
