@@ -28,14 +28,69 @@ let progressTimer = null;
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg && msg.action === 'organizeProgress') {
     updateProgress(msg.state);
-    // When done, reload dashboard data and reset organize button
+    // When done or failed, reload dashboard data and reset organize button
     if (msg.state && msg.state.status !== 'running') {
       dashOrganize.disabled = false;
-      dashOrganize.textContent = 'Organize All';
+      
+      if (msg.state.status === 'failed') {
+        dashOrganize.textContent = 'Organization Failed';
+        setTimeout(() => {
+          dashOrganize.textContent = 'Organize All';
+        }, 5000);
+      } else {
+        dashOrganize.textContent = 'Organize All';
+      }
+      
+      // Reload dashboard data
       loadDashboard();
     }
   }
 });
+
+function updateProgress(state) {
+  if (!state || state.status === 'idle' || state.total === 0) {
+    dashProgressContainer.style.display = 'none';
+    return;
+  }
+  
+  dashProgressContainer.style.display = 'block';
+  const percentage = state.total ? Math.round((state.done / state.total) * 100) : 0;
+  dashProgressBar.style.width = `${percentage}%`;
+  
+  if (state.status === 'failed') {
+    dashProgressText.textContent = `Failed: ${state.done}/${state.total} - ${state.error || 'Unknown error'}`;
+    dashProgressBar.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
+  } else if (state.status === 'done') {
+    dashProgressText.textContent = `Complete: ${state.done}/${state.total}`;
+    dashProgressBar.style.background = 'linear-gradient(90deg, #34d399, #10b981)';
+    // Hide progress after completion
+    setTimeout(() => {
+      dashProgressContainer.style.display = 'none';
+    }, 3000);
+  } else {
+    dashProgressText.textContent = `Organizing: ${state.done}/${state.total}`;
+    dashProgressBar.style.background = 'linear-gradient(90deg, #34d399, #10b981)';
+  }
+}
+
+function pollProgress() {
+  if (progressTimer) clearInterval(progressTimer);
+  progressTimer = setInterval(async () => {
+    try {
+      const state = await chrome.runtime.sendMessage({ action: 'getProgress' });
+      updateProgress(state);
+      
+      if (!state || state.status !== 'running') {
+        clearInterval(progressTimer);
+        hideDashLoader();
+      }
+    } catch (error) {
+      console.error('Failed to poll progress:', error);
+      clearInterval(progressTimer);
+      hideDashLoader();
+    }
+  }, 1000);
+}
 
 // Currently edited bookmark (for manual category assignment)
 let currentEditBookmark = null;
@@ -268,32 +323,6 @@ function renderItems() {
     });
     bookmarkListEl.appendChild(div);
   });
-}
-
-// Progress handling
-function pollProgress() {
-  if (progressTimer) clearInterval(progressTimer);
-  progressTimer = setInterval(async () => {
-    const state = await chrome.runtime.sendMessage({ action: 'getProgress' });
-    updateProgress(state);
-    if (!state || state.status !== 'running') {
-      clearInterval(progressTimer);
-      dashOrganize.disabled = false;
-      dashOrganize.textContent = 'Organize All';
-      loadDashboard();
-    }
-  }, 1200);
-}
-
-function updateProgress(state) {
-  if (!state || state.status === 'idle' || state.total === 0) {
-    dashProgressContainer.style.display = 'none';
-    return;
-  }
-  dashProgressContainer.style.display = 'block';
-  const percentage = state.total ? Math.round((state.done / state.total) * 100) : 0;
-  dashProgressBar.style.width = `${percentage}%`;
-  dashProgressText.textContent = `${state.done}/${state.total}`;
 }
 
 // ----- Manual edit modal logic -----

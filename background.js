@@ -107,6 +107,55 @@ async function getAllBookmarksFlat() {
   });
 }
 
+// Check if a bookmark is already in the Smart Bookmarks folder structure
+async function isBookmarkInSmartStructure(bookmarkId) {
+  return new Promise((resolve) => {
+    function checkParents(id) {
+      chrome.bookmarks.get(id, (results) => {
+        if (chrome.runtime.lastError || !results || !results[0]) {
+          resolve(false);
+          return;
+        }
+        
+        const bookmark = results[0];
+        
+        // If we're at the root, it's not in smart structure
+        if (!bookmark.parentId) {
+          resolve(false);
+          return;
+        }
+        
+        // Check if the parent is the Smart Bookmarks folder
+        chrome.bookmarks.get(bookmark.parentId, (parentResults) => {
+          if (chrome.runtime.lastError || !parentResults || !parentResults[0]) {
+            resolve(false);
+            return;
+          }
+          
+          const parent = parentResults[0];
+          
+          // If parent is Smart Bookmarks folder
+          if (parent.title === SMART_PARENT) {
+            resolve(true);
+            return;
+          }
+          
+          // If parent has no parent, we've reached root without finding Smart Bookmarks
+          if (!parent.parentId) {
+            resolve(false);
+            return;
+          }
+          
+          // Check the parent's parent recursively
+          checkParents(parent.parentId);
+        });
+      });
+    }
+    
+    checkParents(bookmarkId);
+  });
+}
+
 // Fetch and summarise a page for better classification and dashboard display
 async function fetchSummary(url) {
   try {
@@ -211,92 +260,231 @@ async function categorizeBookmarkDetailed(bm) {
 
 // Start asynchronous organization.  Returns immediately and updates orgState.
 async function startOrganize() {
-  // Load classification settings
-  await aiService.init();
-  // Compute list of bookmarks to process (HTTP(S) only, not in smart parent)
-  const list = await getAllBookmarksFlat();
-  const smartParentId = await getSmartParentId();
-  const toProcess = list.filter((b) => b.parentId !== smartParentId);
-  // Determine organize strategy (clone or move). Default to clone if not set.
-  const stratData = await chrome.storage.local.get(['organize_strategy']);
-  const strategy = stratData.organize_strategy || 'clone';
+  // Prevent multiple concurrent organizations
+  if (orgState.status === 'running') {
+    console.log('Organization already running, skipping...');
+    return { success: false, error: 'Already organizing' };
+  }
+  
+  try {
+    // Load classification settings
+    await aiService.init();
+    
+    // Compute list of bookmarks to process (HTTP(S) only, not already in smart parent)
+    const list = await getAllBookmarksFlat();
+    const smartParentId = await getSmartParentId();
+    
+    // Filter out bookmarks that are already in smart folders or invalid URLs
+    const toProcess = [];
+    for (const b of list) {
+      // Skip if already in smart parent structure
+      if (b.parentId === smartParentId) continue;
+      
+      // Check if bookmark is in a subfolder of smart parent using path
+      const isInSmartStructure = b.path && b.path.some(p => p.title === SMART_PARENT);
+      if (isInSmartStructure) continue;
+      
+      toProcess.push(b);
+    }
+    
+    console.log(`Found ${toProcess.length} bookmarks to organize (out of ${list.length} total)`);
+    
+    if (toProcess.length === 0) {
+      return { success: true, message: 'No bookmarks need organizing' };
+    }
+    
+    // Determine organize strategy (clone or move). Default to clone if not set.
+    const stratData = await chrome.storage.local.get(['organize_strategy']);
+    const strategy = stratData.organize_strategy || 'clone';
 
-  orgState = {
-    status: 'running',
-    total: toProcess.length,
-    done: 0,
-    startedAt: Date.now(),
-    lastTitle: null,
-    provider: aiService.mode || 'local'
-  };
-  await saveOrgState();
-  // Immediately broadcast initial progress so UI shows loader
-  broadcastProgress({ status: 'running', done: 0, total: toProcess.length });
-  // Reset stats
-  organizationStats.totalBookmarks = list.length;
-  organizationStats.categories = {};
-  organizationStats.recent = 0;
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  // Load existing bookmark metadata and user categories
-  const metaStore = await chrome.storage.local.get(['bookmarkMeta', 'userCategories']);
-  let meta = metaStore.bookmarkMeta || {};
-  let userCategories = metaStore.userCategories || {};
-  // Process sequentially
-  for (const bm of toProcess) {
-    if (orgState.status !== 'running') break;
-    try {
-      // Use the AI service to classify this bookmark (single category + description)
-      const { category: cat, description } = await aiService.categorizeBookmarkDetailed({ id: bm.id, title: bm.title, url: bm.url });
-      const slug = cat || 'other';
-      // Add new user category if slug not present
-      if (!userCategories[slug]) {
-        const friendly = slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-        userCategories[slug] = { id: slug, name: friendly, emoji: '📁', parent: null, order: Object.keys(userCategories).length + 1 };
+    orgState = {
+      status: 'running',
+      total: toProcess.length,
+      done: 0,
+      startedAt: Date.now(),
+      lastTitle: null,
+      provider: aiService.mode || 'local'
+    };
+    await saveOrgState();
+    
+    // Immediately broadcast initial progress so UI shows loader
+    broadcastProgress({ status: 'running', done: 0, total: toProcess.length });
+    
+    // Reset stats
+    organizationStats.totalBookmarks = list.length;
+    organizationStats.categories = {};
+    organizationStats.recent = 0;
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    
+    // Load existing bookmark metadata and user categories
+    const metaStore = await chrome.storage.local.get(['bookmarkMeta', 'userCategories']);
+    let meta = metaStore.bookmarkMeta || {};
+    let userCategories = metaStore.userCategories || {};
+    
+    // Process sequentially with error handling for each bookmark
+    for (let i = 0; i < toProcess.length; i++) {
+      const bm = toProcess[i];
+      
+      // Check if organization was cancelled
+      if (orgState.status !== 'running') {
+        console.log('Organization cancelled');
+        break;
       }
-      // Persist classification for this original bookmark to avoid reprocessing
-      meta[bm.id] = meta[bm.id] || {};
-      meta[bm.id].primary = slug;
-      meta[bm.id].description = description || '';
-      meta[bm.id].manual = !!meta[bm.id].manual;
-      // Ensure folder exists
-      const targetParent = await ensureCategoryFolder(slug);
-      if (strategy === 'move') {
-        // Move original bookmark into the category folder
-        await safeMove(bm.id, targetParent);
-      } else {
-        // Clone: create a new bookmark in the category folder without moving original
-        await new Promise((resolve) => {
-          chrome.bookmarks.create({ parentId: targetParent, title: bm.title, url: bm.url }, (newBm) => {
-            // Persist meta for the clone
-            meta[newBm.id] = meta[newBm.id] || {};
-            meta[newBm.id].primary = slug;
-            meta[newBm.id].description = description || '';
-            meta[newBm.id].manual = !!meta[newBm.id].manual;
-            resolve();
+      
+      try {
+        // Skip if bookmark already has classification and we're not forcing reclassification
+        let slug, description;
+        if (meta[bm.id] && meta[bm.id].primary && !meta[bm.id].needsReclassification) {
+          slug = meta[bm.id].primary;
+          description = meta[bm.id].description || '';
+        } else {
+          // Use the AI service to classify this bookmark
+          const result = await aiService.categorizeBookmarkDetailed({ 
+            id: bm.id, 
+            title: bm.title, 
+            url: bm.url 
           });
-        });
+          slug = result.category || 'other';
+          description = result.description || '';
+        }
+        
+        // Validate and normalize slug
+        if (!slug || slug.trim() === '') {
+          slug = 'other';
+        }
+        slug = slug.toLowerCase().trim();
+        
+        // Add new user category if slug not present
+        if (!userCategories[slug]) {
+          const friendly = slug.split(/[-_]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          userCategories[slug] = { 
+            id: slug, 
+            name: friendly, 
+            emoji: '📁', 
+            parent: null, 
+            order: Object.keys(userCategories).length + 1 
+          };
+        }
+        
+        // Persist classification for this original bookmark
+        meta[bm.id] = meta[bm.id] || {};
+        meta[bm.id].primary = slug;
+        meta[bm.id].description = description || '';
+        meta[bm.id].manual = !!meta[bm.id].manual;
+        meta[bm.id].organized = true;
+        meta[bm.id].organizedAt = Date.now();
+        delete meta[bm.id].needsReclassification;
+        
+        // Ensure category folder exists
+        const targetParent = await ensureCategoryFolder(slug);
+        
+        if (strategy === 'move') {
+          // Move original bookmark into the category folder
+          await safeMove(bm.id, targetParent);
+        } else {
+          // Clone: create a new bookmark in the category folder without moving original
+          try {
+            const newBm = await new Promise((resolve, reject) => {
+              chrome.bookmarks.create({ 
+                parentId: targetParent, 
+                title: bm.title, 
+                url: bm.url 
+              }, (result) => {
+                if (chrome.runtime.lastError) {
+                  reject(chrome.runtime.lastError);
+                } else {
+                  resolve(result);
+                }
+              });
+            });
+            
+            // Persist meta for the clone
+            meta[newBm.id] = {
+              primary: slug,
+              description: description || '',
+              manual: false,
+              organized: true,
+              organizedAt: Date.now(),
+              clonedFrom: bm.id
+            };
+          } catch (cloneError) {
+            console.error(`Failed to clone bookmark ${bm.title}:`, cloneError);
+            continue; // Skip this bookmark but continue with others
+          }
+        }
+        
+        // Update stats
+        organizationStats.categories[slug] = (organizationStats.categories[slug] || 0) + 1;
+        if (bm.dateAdded && bm.dateAdded > weekAgo) {
+          organizationStats.recent += 1;
+        }
+        
+      } catch (error) {
+        console.error(`Error organizing bookmark "${bm.title}" (${bm.url}):`, error);
+        
+        // Mark as failed but continue
+        meta[bm.id] = meta[bm.id] || {};
+        meta[bm.id].organizeFailed = true;
+        meta[bm.id].lastError = error.message;
       }
-      // Update stats
-      organizationStats.categories[slug] = (organizationStats.categories[slug] || 0) + 1;
-      if (bm.dateAdded && bm.dateAdded > weekAgo) organizationStats.recent += 1;
-      orgState.done += 1;
+      
+      // Update progress
+      orgState.done = i + 1;
       orgState.lastTitle = bm.title;
       await saveOrgState();
+      
       // Broadcast progress after each bookmark is processed
-      broadcastProgress({ status: 'running', done: orgState.done, total: orgState.total });
-    } catch (e) {
-      console.error('Error organizing', bm.url, e);
+      broadcastProgress({ 
+        status: 'running', 
+        done: orgState.done, 
+        total: orgState.total 
+      });
+      
+      // Add small delay to prevent overwhelming the system
+      if (i % 10 === 0 && i > 0) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
+    
+    // Save updated metadata and user categories
+    await chrome.storage.local.set({ bookmarkMeta: meta, userCategories });
+    
+    // Mark as completed
+    orgState.status = 'done';
+    orgState.completedAt = Date.now();
+    await saveOrgState();
+    
+    // Broadcast final progress state
+    broadcastProgress({ 
+      status: 'done', 
+      done: orgState.total, 
+      total: orgState.total 
+    });
+    
+    organizationStats.categoriesCreated = Object.keys(organizationStats.categories).length;
+    await saveStats();
+    
+    console.log(`Organization completed: ${orgState.total} bookmarks processed, ${organizationStats.categoriesCreated} categories created`);
+    
+    return { success: true, stats: organizationStats };
+    
+  } catch (error) {
+    console.error('Organization failed:', error);
+    
+    // Mark as failed
+    orgState.status = 'failed';
+    orgState.error = error.message;
+    await saveOrgState();
+    
+    broadcastProgress({ 
+      status: 'failed', 
+      done: orgState.done, 
+      total: orgState.total, 
+      error: error.message 
+    });
+    
+    return { success: false, error: error.message };
   }
-  // Save updated metadata and user categories
-  await chrome.storage.local.set({ bookmarkMeta: meta, userCategories });
-  orgState.status = 'done';
-  await saveOrgState();
-  // Broadcast final progress state
-  broadcastProgress({ status: 'done', done: orgState.total, total: orgState.total });
-  organizationStats.categoriesCreated = Object.keys(organizationStats.categories).length;
-  await saveStats();
-  return { success: true };
 }
 
 // Quick add the current page
@@ -371,20 +559,20 @@ async function addCurrentPage(url, title, override = {}) {
 
 // Build dashboard data: group bookmarks by category with tags and summaries
 async function getDashboardData() {
-  // Initialize AI service when needed for uncategorized bookmarks
-  await aiService.init();
   const list = await getAllBookmarksFlat();
   const result = {};
+  
   // Load user categories and metadata
   const store = await chrome.storage.local.get(['userCategories', 'bookmarkMeta']);
   let userCategories = store.userCategories || {};
   let meta = store.bookmarkMeta || {};
-  let metaDirty = false;
+  
   // Build mapping of folder IDs to slugs for existing category folders
   const smartId = await getSmartParentId();
   const catChildren = await new Promise((resolve) => {
     chrome.bookmarks.getChildren(smartId, (children) => resolve(children || []));
   });
+  
   const folderIdToSlug = {};
   catChildren.forEach((child) => {
     if (!child.url) {
@@ -399,52 +587,52 @@ async function getDashboardData() {
       }
     }
   });
+  
   for (const bm of list) {
     let slug;
     let description = '';
+    
     // Determine category by folder if inside smart parent
     if (folderIdToSlug[bm.parentId]) {
       slug = folderIdToSlug[bm.parentId];
     } else if (meta[bm.id] && meta[bm.id].primary) {
+      // Use existing classification without auto-organizing
       slug = meta[bm.id].primary;
       description = meta[bm.id].description || '';
     } else {
-      // Classify and persist
-      try {
-        const detail = await aiService.categorizeBookmarkDetailed({ id: bm.id, title: bm.title, url: bm.url });
-        slug = detail.category || 'other';
-        description = detail.description || '';
-        // Add new category if needed
-        if (!userCategories[slug]) {
-          const friendly = slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          userCategories[slug] = { id: slug, name: friendly, emoji: '📁', parent: null, order: Object.keys(userCategories).length + 1 };
-        }
-        meta[bm.id] = meta[bm.id] || {};
-        meta[bm.id].primary = slug;
-        meta[bm.id].description = description;
-        meta[bm.id].manual = !!meta[bm.id].manual;
-        metaDirty = true;
-        // Move bookmark to appropriate folder
-        const parentId = await ensureCategoryFolder(slug);
-        await safeMove(bm.id, parentId);
-      } catch {
-        slug = 'other';
-      }
+      // For unclassified bookmarks, just show them as 'Uncategorized' 
+      // Don't auto-classify here - only when user explicitly organizes
+      slug = 'uncategorized';
+      description = 'Not yet organized';
     }
-    const cat = userCategories[slug] || { name: slug, emoji: '' };
+    
+    // Ensure category exists in display
+    if (!userCategories[slug] && slug !== 'uncategorized') {
+      const friendly = slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      userCategories[slug] = { id: slug, name: friendly, emoji: '📁', parent: null, order: Object.keys(userCategories).length + 1 };
+    }
+    
+    const cat = slug === 'uncategorized' 
+      ? { name: 'Uncategorized', emoji: '❓' }
+      : (userCategories[slug] || { name: slug, emoji: '📁' });
+    
     const displayName = `${cat.emoji ? cat.emoji + ' ' : ''}${cat.name}`;
+    
     if (!result[displayName]) result[displayName] = { count: 0, items: [] };
     result[displayName].count += 1;
+    
     // Generate simple tags based on domain and keywords
     const tags = [];
     const urlLower = (bm.url || '').toLowerCase();
     const titleLower = (bm.title || '').toLowerCase();
+    
     if (urlLower.includes('github')) tags.push('github');
     if (urlLower.includes('stackoverflow')) tags.push('stackoverflow');
     if (urlLower.includes('docs') || titleLower.includes('docs')) tags.push('docs');
     if (urlLower.includes('api') || titleLower.includes('api')) tags.push('api');
     if (titleLower.includes('tutorial')) tags.push('tutorial');
     if (titleLower.includes('guide')) tags.push('guide');
+    
     result[displayName].items.push({
       id: bm.id,
       title: bm.title,
@@ -454,9 +642,7 @@ async function getDashboardData() {
       primary: slug
     });
   }
-  if (metaDirty) {
-    await chrome.storage.local.set({ bookmarkMeta: meta, userCategories });
-  }
+  
   return result;
 }
 
@@ -491,10 +677,32 @@ chrome.commands.onCommand.addListener(async (command) => {
   }
 });
 
+// Reset organization state (useful for clearing stuck states)
+async function resetOrganizeState() {
+  orgState = {
+    status: 'idle',
+    total: 0,
+    done: 0,
+    startedAt: null,
+    lastTitle: null,
+    provider: 'local'
+  };
+  await saveOrgState();
+  await chrome.storage.local.remove('organize_progress');
+  broadcastProgress({ status: 'idle', done: 0, total: 0 });
+}
+
 // Message API for popup/options/dashboard
 chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
   if (req.action === 'startOrganize') {
-    startOrganize().then(() => sendResponse({ success: true }));
+    startOrganize().then((result) => sendResponse(result)).catch((error) => {
+      console.error('Start organize failed:', error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+  if (req.action === 'resetOrganizeState') {
+    resetOrganizeState().then(() => sendResponse({ success: true }));
     return true;
   }
   if (req.action === 'getProgress') {
@@ -518,46 +726,24 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
   if (req.action === 'getAllBookmarks') {
     (async () => {
       try {
-        await aiService.init();
         const list = await getAllBookmarksFlat();
         const res = [];
         const store = await chrome.storage.local.get(['bookmarkMeta', 'userCategories']);
         let meta = store.bookmarkMeta || {};
         let userCategories = store.userCategories || {};
-        let metaDirty = false;
+        
         for (const bm of list) {
           let slug;
-          // Use existing meta if available
+          // Use existing meta if available, don't auto-classify
           if (meta[bm.id] && meta[bm.id].primary) {
             slug = meta[bm.id].primary;
           } else {
-            // Classify
-            try {
-              const detail = await aiService.categorizeBookmarkDetailed({ id: bm.id, title: bm.title, url: bm.url });
-              slug = detail.category || 'other';
-              const description = detail.description || '';
-              // Add category if new
-              if (slug && !userCategories[slug]) {
-                const friendly = slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                userCategories[slug] = { id: slug, name: friendly, emoji: '📁', parent: null, order: Object.keys(userCategories).length + 1 };
-              }
-              meta[bm.id] = meta[bm.id] || {};
-              meta[bm.id].primary = slug;
-              meta[bm.id].description = description;
-              meta[bm.id].manual = !!meta[bm.id].manual;
-              metaDirty = true;
-              // Move to folder
-              const parentId = await ensureCategoryFolder(slug);
-              await safeMove(bm.id, parentId);
-            } catch {
-              slug = 'other';
-            }
+            // Show as uncategorized instead of auto-classifying
+            slug = 'uncategorized';
           }
           res.push({ ...bm, category: slug, favorite: Math.random() < 0.1 });
         }
-        if (metaDirty) {
-          await chrome.storage.local.set({ bookmarkMeta: meta, userCategories });
-        }
+        
         sendResponse({ bookmarks: res });
       } catch (e) {
         sendResponse({ bookmarks: [] });

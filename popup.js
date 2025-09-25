@@ -53,6 +53,7 @@ const categoryConfig = {
   'Design': { color: '#ec4899', icon: '🎭' },
   'UX/UI': { color: '#ec4899', icon: '🎭' },
   'Documentation': { color: '#6b7280', icon: '📚' },
+  'uncategorized': { color: '#64748b', icon: '❓' },
   'Other': { color: '#64748b', icon: '📄' }
 };
 
@@ -190,14 +191,38 @@ settingsBtn.addEventListener('click', () => {
 function pollProgress() {
   if (progressPoller) clearInterval(progressPoller);
   progressPoller = setInterval(async () => {
-    const state = await chrome.runtime.sendMessage({ action: 'getProgress' });
-    updateProgress(state);
-    if (!state || state.status !== 'running') {
+    try {
+      const state = await chrome.runtime.sendMessage({ action: 'getProgress' });
+      updateProgress(state);
+      
+      if (!state || (state.status !== 'running')) {
+        clearInterval(progressPoller);
+        organizeBtn.disabled = false;
+        
+        if (state && state.status === 'failed') {
+          organizeBtn.innerHTML = '<span class="btn-icon">❌</span> <span>Organization Failed</span>';
+          showStatus(`Organization failed: ${state.error || 'Unknown error'}`, 'error');
+          
+          // Reset after a delay
+          setTimeout(() => {
+            organizeBtn.innerHTML = '<span class="btn-icon">🤖</span> <span>Organize All Bookmarks</span>';
+          }, 5000);
+        } else {
+          organizeBtn.innerHTML = '<span class="btn-icon">🤖</span> <span>Organize All Bookmarks</span>';
+          if (state && state.status === 'done') {
+            showStatus('Organization completed successfully!', 'success');
+          }
+        }
+        
+        // Reload data after completion or failure
+        loadBookmarks();
+        updateStats();
+      }
+    } catch (error) {
+      console.error('Failed to poll progress:', error);
       clearInterval(progressPoller);
       organizeBtn.disabled = false;
       organizeBtn.innerHTML = '<span class="btn-icon">🤖</span> <span>Organize All Bookmarks</span>';
-      loadBookmarks();
-      updateStats();
     }
   }, 1200);
 }
@@ -207,10 +232,25 @@ function updateProgress(state) {
     progressContainer.style.display = 'none';
     return;
   }
+  
   progressContainer.style.display = 'block';
   const percentage = state.total ? Math.round((state.done / state.total) * 100) : 0;
   progressBar.style.width = `${percentage}%`;
-  progressText.textContent = `${state.done}/${state.total}`;
+  
+  if (state.status === 'failed') {
+    progressText.textContent = `Failed: ${state.done}/${state.total}`;
+    progressBar.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
+  } else if (state.status === 'done') {
+    progressText.textContent = `Complete: ${state.done}/${state.total}`;
+    progressBar.style.background = 'linear-gradient(90deg, #34d399, #10b981)';
+    // Hide progress after completion
+    setTimeout(() => {
+      progressContainer.style.display = 'none';
+    }, 3000);
+  } else {
+    progressText.textContent = `${state.done}/${state.total}`;
+    progressBar.style.background = 'linear-gradient(90deg, #34d399, #10b981)';
+  }
 }
 
 // Load bookmarks from background
