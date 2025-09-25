@@ -32,7 +32,7 @@ chrome.runtime.onMessage.addListener((msg) => {
     // When done or failed, reload dashboard data and reset organize button
     if (msg.state && msg.state.status !== 'running') {
       dashOrganize.disabled = false;
-      
+
       if (msg.state.status === 'failed') {
         dashOrganize.textContent = 'Organization Failed';
         setTimeout(() => {
@@ -41,7 +41,7 @@ chrome.runtime.onMessage.addListener((msg) => {
       } else {
         dashOrganize.textContent = 'Organize All';
       }
-      
+
       // Reload dashboard data
       loadDashboard();
     }
@@ -53,11 +53,11 @@ function updateProgress(state) {
     dashProgressContainer.style.display = 'none';
     return;
   }
-  
+
   dashProgressContainer.style.display = 'block';
   const percentage = state.total ? Math.round((state.done / state.total) * 100) : 0;
   dashProgressBar.style.width = `${percentage}%`;
-  
+
   if (state.status === 'failed') {
     dashProgressText.textContent = `Failed: ${state.done}/${state.total} - ${state.error || 'Unknown error'}`;
     dashProgressBar.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
@@ -80,7 +80,7 @@ function pollProgress() {
     try {
       const state = await chrome.runtime.sendMessage({ action: 'getProgress' });
       updateProgress(state);
-      
+
       if (!state || state.status !== 'running') {
         clearInterval(progressTimer);
         hideDashLoader();
@@ -133,19 +133,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     await chrome.runtime.sendMessage({ action: 'startOrganize' });
     pollProgress();
   });
-  
+
   dashRemoveDuplicates.addEventListener('click', async () => {
     if (!confirm('Remove duplicate bookmarks from Smart Bookmarks folder? This will keep the oldest copy of each duplicate and remove the rest. Original bookmarks outside Smart Bookmarks will not be affected.')) {
       return;
     }
-    
+
     dashRemoveDuplicates.disabled = true;
     dashRemoveDuplicates.textContent = 'Removing...';
     showDashLoader();
-    
+
     try {
       const result = await chrome.runtime.sendMessage({ action: 'removeDuplicates' });
-      
+
       if (result && result.success) {
         alert(`Successfully removed ${result.duplicatesRemoved} duplicate bookmarks!`);
         await loadDashboard();
@@ -156,12 +156,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       alert('Error removing duplicates');
       console.error('Remove duplicates failed:', e);
     }
-    
+
     dashRemoveDuplicates.disabled = false;
     dashRemoveDuplicates.textContent = 'Remove Duplicates';
     hideDashLoader();
   });
-  
+
   dashSettings.addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
   });
@@ -291,10 +291,10 @@ function renderItems() {
     headerDiv.appendChild(catLabelDiv);
     // Actions container: holds edit and delete buttons, only visible on hover
     const actionsDiv = document.createElement('div');
-    actionsDiv.className = 'actions';
+    actionsDiv.className = 'bookmark-actions';
     // Edit button
     const editBtn = document.createElement('button');
-    editBtn.className = 'edit-btn';
+    editBtn.className = 'edit-btn bookmark-action-btn';
     editBtn.textContent = 'Edit';
     editBtn.title = 'Edit category and tags';
     editBtn.addEventListener('click', (e) => {
@@ -304,7 +304,7 @@ function renderItems() {
     actionsDiv.appendChild(editBtn);
     // Delete button
     const delBtn = document.createElement('button');
-    delBtn.className = 'delete-btn';
+    delBtn.className = 'delete-btn bookmark-action-btn';
     delBtn.textContent = 'Delete';
     delBtn.title = 'Delete bookmark';
     delBtn.addEventListener('click', async (e) => {

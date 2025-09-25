@@ -30,7 +30,7 @@ body::before {
 }
 
 .app {
-  height: 100vh;
+  height: auto;
   display: flex;
   flex-direction: column;
   position: relative;

@@ -813,7 +813,6 @@ async function removeDuplicatesFromSmartBookmarks() {
     console.log(`Found ${duplicatesFound} duplicate bookmarks to remove`);
     
     // Remove duplicates
-    let duplicatesRemoved = 0;
     for (const duplicate of duplicatesToRemove) {
       try {
         await new Promise((resolve, reject) => {
