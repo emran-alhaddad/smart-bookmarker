@@ -1,0 +1,383 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1a1b23;
+  color: #ffffff;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.dashboard {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: #2a2b35;
+  border-right: 1px solid #383a46;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  margin-bottom: 12px;
+}
+
+.small-text {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.category-list {
+  list-style: none;
+}
+
+.category-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.2s ease;
+}
+
+.category-item:hover {
+  background: #3a3b4c;
+}
+
+.category-item.active {
+  background: #4c1d95;
+}
+
+.category-name {
+  font-size: 14px;
+}
+
+.category-count {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* Empty state hint styling */
+.empty-hint {
+  margin: 16px;
+  padding: 12px 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+/* Full screen loader overlay for dashboard */
+.dash-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.dash-loader .spinner {
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid #4c1d95;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: dash-spin 1s linear infinite;
+}
+@keyframes dash-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Main content */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #383a46;
+}
+
+.main-header-left h2 {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+.main-header-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.search-input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: #fff;
+  font-size: 14px;
+  width: 200px;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  color: #fff;
+}
+
+.btn.primary:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+}
+
+.btn.secondary {
+  background: linear-gradient(135deg, #4b5563, #374151);
+  color: #d1d5db;
+}
+
+.btn.secondary:hover {
+  background: linear-gradient(135deg, #374151, #1f2937);
+  color: #fff;
+}
+
+/* Progress bar */
+.progress-container {
+  margin: 8px 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  height: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #34d399, #10b981);
+  width: 0;
+  transition: width 0.2s ease;
+}
+
+.progress-text {
+  position: absolute;
+  top: -18px;
+  right: 0;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Bookmark list */
+.bookmark-list {
+  flex: 1;
+  padding: 16px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bookmark-item {
+  background: #2a2b35;
+  border: 1px solid #383a46;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* Header within bookmark item to align favicon, title and category */
+.bookmark-item .header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bookmark-item .favicon {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+}
+
+.bookmark-item .category-label {
+  margin-left: auto;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.bookmark-item:hover {
+  background: #3a3b4c;
+}
+
+.bookmark-item .title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.bookmark-item .url {
+  font-size: 12px;
+  color: #9ca3af;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.bookmark-item .summary {
+  font-size: 12px;
+  color: #d1d5db;
+}
+
+.tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 10px;
+  color: #d1d5db;
+}
+
+/* Edit modal overlay styling */
+.edit-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.edit-modal {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 20px;
+  width: 320px;
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+}
+
+.edit-modal h3 {
+  margin-bottom: 12px;
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.form-group input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  background: #2a2b35;
+  color: #ffffff;
+  font-size: 14px;
+}
+
+.edit-categories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-category-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #e5e7eb;
+}
+
+.edit-category-row input[type="checkbox"],
+.edit-category-row input[type="radio"] {
+  accent-color: #4c1d95;
+}
+
+/* Edit button styling inside bookmark item */
+.bookmark-item .edit-btn {
+  margin-left: 6px;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 12px;
+  visibility: hidden;
+}
+
+/* Delete button styling inside bookmark item */
+.bookmark-item .delete-btn {
+  margin-left: 4px;
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 12px;
+  visibility: hidden;
+}
+
+/* Show edit and delete buttons on hover */
+.bookmark-item:hover .edit-btn,
+.bookmark-item:hover .delete-btn {
+  visibility: visible;
+}
+
+/* Actions container in header */
+.bookmark-item .actions {
+  display: flex;
+  gap: 4px;
+  margin-left: 6px;
+}

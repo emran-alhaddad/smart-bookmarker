@@ -2,77 +2,351 @@
 <html>
 <head>
   <title>Smart Bookmark Organizer – Options</title>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 700px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
-    .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    h1 { color: #333; margin-bottom: 30px; text-align: center; }
-    .section { margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #4caf50; }
-    .section h3 { margin-top: 0; color: #495057; }
-    .form-group { margin-bottom: 20px; }
-    label { display: block; margin-bottom: 8px; font-weight: 500; color: #495057; }
-    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: #4caf50; box-shadow: 0 0 0 2px rgba(76,175,80,0.2); }
-    .btn { background: linear-gradient(135deg, #4caf50, #45a049); color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s ease; }
-    .btn:hover { background: linear-gradient(135deg, #45a049, #3d8b40); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(76,175,80,0.3); }
-    .btn.secondary { background: linear-gradient(135deg, #6c757d, #5a6268); }
-    .btn.secondary:hover { background: linear-gradient(135deg, #5a6268, #495057); }
-    .status { padding: 10px; border-radius: 4px; margin-top: 10px; display: none; }
-    .status.success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
-    .status.error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-    .help-text { font-size: 12px; color: #6c757d; margin-top: 5px; }
-    .category-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-top: 10px; }
-    .category-item { display: flex; align-items: center; gap: 8px; padding: 8px; background: white; border: 1px solid #dee2e6; border-radius: 4px; }
-    .category-color { width: 16px; height: 16px; border-radius: 50%; }
+    /* ===== Design Tokens ===== */
+    :root{
+      --bg: linear-gradient(135deg,#f7fafc 0%, #eef5ff 40%, #f6f9ff 100%);
+      --card: rgba(255,255,255,0.85);
+      --text: #1f2937;
+      --muted: #6b7280;
+      --brand-1: #33d17a; /* base */
+      --brand-2: #2bb669; /* hover */
+      --brand-3: #22a25d; /* active */
+      --border: rgba(15,23,42,0.08);
+      --ring: rgba(51,209,122,0.35);
+      --shadow-sm: 0 1px 2px rgba(16,24,40,.06);
+      --shadow-md: 0 10px 25px rgba(2, 8, 20, 0.06), 0 3px 8px rgba(2,8,20,0.06);
+      --shadow-lg: 0 18px 30px rgba(2, 8, 20, 0.08), 0 1px 1px rgba(2,8,20,0.04);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 8px;
+      --surface-gradient: radial-gradient(80% 120% at 10% 10%, rgba(51,209,122,0.08), transparent 60%),
+                          radial-gradient(80% 120% at 90% 0%, rgba(37,99,235,0.06), transparent 60%);
+    }
+
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg: radial-gradient(120% 120% at 100% 0%, #0b1220, #0b1220 30%, #0a0f1d 100%);
+        --card: rgba(18,24,38,0.8);
+        --text: #e5e7eb;
+        --muted: #9aa3b2;
+        --border: rgba(148,163,184,0.15);
+        --ring: rgba(51,209,122,0.4);
+        --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
+        --shadow-md: 0 10px 25px rgba(0,0,0,.35), 0 3px 8px rgba(0,0,0,.25);
+        --shadow-lg: 0 18px 36px rgba(0,0,0,.45), 0 2px 4px rgba(0,0,0,.25);
+        --surface-gradient: radial-gradient(100% 140% at 0% 0%, rgba(51,209,122,0.08), transparent 60%),
+                            radial-gradient(100% 140% at 100% 0%, rgba(37,99,235,0.08), transparent 60%);
+      }
+    }
+
+    /* ===== Base ===== */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body{
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      margin: 0;
+      color: var(--text);
+      background: var(--bg);
+      background-attachment: fixed;
+      line-height: 1.45;
+    }
+
+    /* decorative backdrop */
+    body::before{
+      content:"";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: var(--surface-gradient);
+      mix-blend-mode: normal;
+    }
+
+    .container{
+      max-width: 920px; /* a bit wider for breathing room */
+      margin: 32px auto;
+      padding: clamp(16px, 3vw, 28px);
+      background: var(--card);
+      backdrop-filter: saturate(140%) blur(8px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-lg);
+    }
+
+    h1{
+      margin: 0 0 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      text-align: center;
+      font-size: clamp(22px, 2.4vw, 32px);
+    }
+
+    .subtitle{
+      text-align: center;
+      color: var(--muted);
+      margin: -6px 0 24px;
+      font-size: 14px;
+    }
+
+    /* ===== Sections as modern cards ===== */
+    .section{
+      margin: 22px 0;
+      padding: 18px clamp(14px, 2vw, 22px);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.35));
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: clip;
+    }
+    @media (prefers-color-scheme: dark){
+      .section{
+        background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      }
+    }
+    .section::before{
+      content:"";
+      position:absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      background: linear-gradient(90deg, rgba(51,209,122,.65), rgba(37,99,235,.4));
+      opacity: .7;
+    }
+    .section h3{
+      margin: 0 0 12px;
+      font-size: 16px;
+      text-transform: none;
+      letter-spacing: .2px;
+    }
+
+    /* ===== Forms ===== */
+    .form-group{ margin-bottom: 16px; }
+
+    label{
+      display:block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    input, select, textarea{
+      width: 100%;
+      padding: 12px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 14px;
+      background: rgba(255,255,255,0.75);
+      color: var(--text);
+      outline: none;
+      transition: box-shadow .2s ease, border-color .2s ease, transform .05s ease;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+    @media (prefers-color-scheme: dark){
+      input, select, textarea{
+        background: rgba(255,255,255,0.04);
+        box-shadow: none;
+      }
+    }
+    input:focus, select:focus, textarea:focus{
+      border-color: var(--brand-1);
+      box-shadow: 0 0 0 3px var(--ring);
+    }
+    input[type="number"]{ -moz-appearance: textfield; }
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button{ -webkit-appearance: none; margin: 0; }
+
+    .help-text{
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* inline rows preserving original inline styles if any exist */
+    .row{ display: flex; flex-wrap: wrap; }
+    .row > *{ flex: 1 1 180px; }
+
+    /* ===== Buttons ===== */
+    .btn{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 12px 18px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .2px;
+      transition: transform .08s ease, box-shadow .2s ease, background .2s ease, filter .2s ease;
+      box-shadow: 0 6px 16px rgba(51,209,122,0.32);
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:hover{ transform: translateY(-1px); filter: saturate(105%); }
+    .btn:active{ transform: translateY(0); background: linear-gradient(135deg, var(--brand-2), var(--brand-3)); }
+    .btn.secondary{
+      background: linear-gradient(135deg, #94a3b8, #64748b);
+      box-shadow: 0 6px 16px rgba(100,116,139,0.28);
+    }
+    .btn.secondary:hover{ filter: saturate(108%); }
+    .btn[disabled]{
+      opacity:.6; cursor:not-allowed; transform:none; box-shadow:none;
+    }
+
+    /* group action bar */
+    .actions{
+      display:flex; flex-wrap: wrap; gap:10px;
+    }
+
+    /* ===== Status banners ===== */
+    .status{
+      padding: 12px 14px;
+      border-radius: 12px;
+      margin-top: 12px;
+      display: none;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.6);
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(4px);
+    }
+    .status.success{ background: rgba(209, 250, 229, 0.75); border-color: rgba(16,185,129,.35); color: #065f46; }
+    .status.error{ background: rgba(254, 226, 226, 0.85); border-color: rgba(239,68,68,.35); color: #7f1d1d; }
+    @media (prefers-color-scheme: dark){
+      .status{ background: rgba(255,255,255,0.06); }
+      .status.success{ background: rgba(16,185,129,0.12); color: #c7f9e7; }
+      .status.error{ background: rgba(239,68,68,0.14); color: #fecaca; }
+    }
+
+    /* ===== Category list ===== */
+    .category-list{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .category-item{
+      display:flex; align-items:center; gap:10px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-sm);
+      transition: transform .08s ease, box-shadow .2s ease, background .2s ease;
+    }
+    .category-item:hover{ transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    @media (prefers-color-scheme: dark){
+      .category-item{ background: rgba(255,255,255,0.04); }
+    }
+    .category-color{ width: 16px; height:16px; border-radius: 50%; border: 1px solid var(--border); }
+
+    /* ===== Radio group (preserve original inputs) ===== */
+    [type="radio"]{
+      appearance: none;
+      width: 18px; height: 18px;
+      border: 2px solid #94a3b8;
+      border-radius: 50%;
+      display: inline-grid; place-content: center;
+      margin-right: 8px;
+      vertical-align: -3px;
+      background: transparent;
+      transition: border-color .2s ease, box-shadow .2s ease;
+    }
+    [type="radio"]::before{
+      content:"";
+      width: 10px; height:10px;
+      border-radius: 50%;
+      transform: scale(0);
+      transition: transform .12s ease-in-out;
+      background: var(--brand-1);
+    }
+    [type="radio"]:checked::before{ transform: scale(1); }
+    [type="radio"]:focus{ outline: none; box-shadow: 0 0 0 3px var(--ring); border-color: var(--brand-1); }
+
+    /* ===== Mini badges for headings ===== */
+    .kicker{
+      display:inline-flex; align-items:center; gap:8px;
+      font-size: 12px; color: var(--muted);
+      background: rgba(51,209,122,0.1);
+      padding: 6px 10px; border-radius: 999px;
+      border: 1px solid rgba(51,209,122,0.2);
+      margin-right: 8px;
+    }
+
+    /* ===== Tiny icon helpers (emoji scale) ===== */
+    .icon{ font-size: 16px; line-height: 1; }
+
+    /* ===== Utility spacing ===== */
+    .mt-6{ margin-top: 16px; }
+    .mt-8{ margin-top: 20px; }
+    .grid-2{
+      display:grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 14px;
+    }
+
+    /* ===== Accessibility hover/focus ring for buttons inside keyboard nav ===== */
+    @media (hover: hover){
+      .btn:focus-visible{ box-shadow: 0 0 0 4px var(--ring); outline: none; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>🤖 Smart Bookmark Organizer – Settings</h1>
+    <div class="subtitle">Tune how your bookmarks are auto-classified, organized, and backed up.</div>
+
     <!-- AI Configuration -->
     <div class="section">
-      <h3>AI Configuration</h3>
-      <div class="form-group">
-        <label for="classificationMode">Classification Mode</label>
-        <select id="classificationMode">
-          <option value="local">Local (offline)</option>
-          <option value="api_auto">API – Auto</option>
-          <option value="api_openai">API – OpenAI</option>
-          <option value="api_gemini">API – Gemini</option>
-          <option value="api_claude">API – Claude</option>
-          <option value="api_uclassify">API – uClassify</option>
-        </select>
-        <div class="help-text">Choose how bookmarks are categorized. Auto will try each API provider in order. If no API key is present or a call fails, it falls back to local.</div>
+      <h3><span class="kicker"><span class="icon">🧠</span> AI</span> Configuration</h3>
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="classificationMode">Classification Mode</label>
+          <select id="classificationMode">
+            <option value="local">Local (offline)</option>
+            <option value="api_auto">API – Auto</option>
+            <option value="api_openai">API – OpenAI</option>
+            <option value="api_gemini">API – Gemini</option>
+            <option value="api_claude">API – Claude</option>
+            <option value="api_uclassify">API – uClassify</option>
+          </select>
+          <div class="help-text">Auto tries each API provider in order. Missing keys or failures fall back to local.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="rateLimitDelay">Rate Limit Delay (ms)</label>
+          <input type="number" id="rateLimitDelay" value="2000" min="500" max="10000">
+          <div class="help-text">Delay between API calls. Increase to avoid rate limits.</div>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="openaiKey">OpenAI API Key</label>
-        <input type="password" id="openaiKey" placeholder="Enter OpenAI API key (optional)">
-        <div class="help-text">Used for accurate classification via OpenAI. Leave blank to disable.</div>
-      </div>
-      <div class="form-group">
-        <label for="geminiKey">Gemini API Key</label>
-        <input type="password" id="geminiKey" placeholder="Enter Gemini API key (optional)">
-        <div class="help-text">Used for classification via Google Gemini. Leave blank to disable.</div>
-      </div>
-      <div class="form-group">
-        <label for="claudeKey">Claude API Key</label>
-        <input type="password" id="claudeKey" placeholder="Enter Claude API key (optional)">
-        <div class="help-text">Used for classification via Anthropic Claude. Leave blank to disable.</div>
-      </div>
-      <div class="form-group">
-        <label for="uclassifyKey">uClassify API Key</label>
-        <input type="password" id="uclassifyKey" placeholder="Enter uClassify API key (optional)">
-        <div class="help-text">Used for classification via uClassify. Leave blank to disable.</div>
-      </div>
-      <div class="form-group">
-        <label for="rateLimitDelay">Rate Limit Delay (ms)</label>
-        <input type="number" id="rateLimitDelay" value="2000" min="500" max="10000">
-        <div class="help-text">Delay between API calls. Increase to avoid hitting rate limits.</div>
+
+      <div class="grid-2 mt-6">
+        <div class="form-group">
+          <label for="openaiKey">OpenAI API Key</label>
+          <input type="password" id="openaiKey" placeholder="Enter OpenAI API key (optional)">
+          <div class="help-text">Used for accurate classification via OpenAI.</div>
+        </div>
+        <div class="form-group">
+          <label for="geminiKey">Gemini API Key</label>
+          <input type="password" id="geminiKey" placeholder="Enter Gemini API key (optional)">
+          <div class="help-text">Used for classification via Google Gemini.</div>
+        </div>
+        <div class="form-group">
+          <label for="claudeKey">Claude API Key</label>
+          <input type="password" id="claudeKey" placeholder="Enter Claude API key (optional)">
+          <div class="help-text">Used for classification via Anthropic Claude.</div>
+        </div>
+        <div class="form-group">
+          <label for="uclassifyKey">uClassify API Key</label>
+          <input type="password" id="uclassifyKey" placeholder="Enter uClassify API key (optional)">
+          <div class="help-text">Used for classification via uClassify.</div>
+        </div>
       </div>
     </div>
+
     <!-- Organize Strategy -->
     <div class="section">
-      <h3>Organize Strategy</h3>
+      <h3><span class="kicker"><span class="icon">🗂️</span> Filing</span> Organize Strategy</h3>
       <label style="display:block;margin:6px 0;">
         <input type="radio" name="organizeStrategy" id="keepOriginals" value="clone" checked>
         Keep originals (clone into Smart Bookmarks)
@@ -86,44 +360,52 @@
 
     <!-- Categories Management -->
     <div class="section">
-      <h3>Categories</h3>
+      <h3><span class="kicker"><span class="icon">🏷️</span> Taxonomy</span> Categories</h3>
       <!-- List of existing categories -->
-      <div id="userCategoriesList"></div>
+      <div id="userCategoriesList" class="category-list"></div>
+
       <!-- Row for adding a new category: slug is derived automatically from the name -->
-      <div class="row" style="gap:8px; margin-top:12px">
+      <div class="row mt-6" style="gap:8px; margin-top:12px">
         <input id="newCatName" placeholder="Name (e.g., Tools)" />
         <input id="newCatEmoji" placeholder="Emoji (e.g., 🧰)" />
         <select id="newCatParent"><option value="">No parent</option></select>
         <button id="addCategoryBtn" class="btn secondary" type="button">Add</button>
       </div>
-      <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap">
+
+      <div class="actions mt-8">
         <button id="saveCategoriesBtn" class="btn" type="button">Save Changes</button>
       </div>
-      <div class="help-text">Each category requires a unique slug derived from its name. Use emoji and name to customize. Use parent to create sub‑categories.</div>
+      <div class="help-text">Each category requires a unique slug derived from its name. Use emoji and name to customize. Use parent to create sub-categories.</div>
     </div>
 
     <!-- Custom Keywords -->
     <div class="section">
-      <h3>Custom Keywords for AI</h3>
+      <h3><span class="kicker"><span class="icon">🧩</span> Hints</span> Custom Keywords for AI</h3>
       <textarea id="customCategories" rows="4" placeholder="Enter custom keywords, one per line"></textarea>
       <div class="help-text">Additional keywords that the AI should recognize when classifying pages. Keywords do not create new categories automatically.</div>
     </div>
+
     <!-- Backup & Restore -->
     <div class="section">
-      <h3>Backup &amp; Restore</h3>
+      <h3><span class="kicker"><span class="icon">💾</span> Backup</span> &amp; Restore</h3>
       <div class="form-group">
-        <button id="exportBtn" class="btn secondary">Export Settings</button>
-        <button id="importBtn" class="btn secondary">Import Settings</button>
+        <div class="actions">
+          <button id="exportBtn" class="btn secondary" type="button">Export Settings</button>
+          <button id="importBtn" class="btn secondary" type="button">Import Settings</button>
+        </div>
         <input type="file" id="importFile" accept=".json" style="display:none;">
         <div class="help-text">Backup your settings and categories for migration or sharing.</div>
       </div>
     </div>
-    <div class="form-group">
-      <button id="saveBtn" class="btn">Save Settings</button>
-      <button id="resetBtn" class="btn secondary">Reset to Defaults</button>
+
+    <div class="actions">
+      <button id="saveBtn" class="btn" type="button">Save Settings</button>
+      <button id="resetBtn" class="btn secondary" type="button">Reset to Defaults</button>
     </div>
-    <div id="status" class="status"></div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
   </div>
+
+  <!-- Keep your existing behavior JS reference intact -->
   <script src="options.js"></script>
 </body>
 </html>
