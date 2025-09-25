@@ -11,6 +11,7 @@ const itemCountEl = document.getElementById('itemCount');
 const catCountEl = document.getElementById('catCount');
 const dashSearch = document.getElementById('dashSearch');
 const dashOrganize = document.getElementById('dashOrganize');
+const dashRemoveDuplicates = document.getElementById('dashRemoveDuplicates');
 const dashSettings = document.getElementById('dashSettings');
 const dashProgressContainer = document.getElementById('dashProgressContainer');
 const dashProgressBar = document.getElementById('dashProgressBar');
@@ -132,6 +133,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     await chrome.runtime.sendMessage({ action: 'startOrganize' });
     pollProgress();
   });
+  
+  dashRemoveDuplicates.addEventListener('click', async () => {
+    if (!confirm('Remove duplicate bookmarks from Smart Bookmarks folder? This will keep the oldest copy of each duplicate and remove the rest. Original bookmarks outside Smart Bookmarks will not be affected.')) {
+      return;
+    }
+    
+    dashRemoveDuplicates.disabled = true;
+    dashRemoveDuplicates.textContent = 'Removing...';
+    showDashLoader();
+    
+    try {
+      const result = await chrome.runtime.sendMessage({ action: 'removeDuplicates' });
+      
+      if (result && result.success) {
+        alert(`Successfully removed ${result.duplicatesRemoved} duplicate bookmarks!`);
+        await loadDashboard();
+      } else {
+        alert(`Error removing duplicates: ${result.error || 'Unknown error'}`);
+      }
+    } catch (e) {
+      alert('Error removing duplicates');
+      console.error('Remove duplicates failed:', e);
+    }
+    
+    dashRemoveDuplicates.disabled = false;
+    dashRemoveDuplicates.textContent = 'Remove Duplicates';
+    hideDashLoader();
+  });
+  
   dashSettings.addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
   });

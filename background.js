@@ -449,6 +449,24 @@ async function startOrganize() {
     // Save updated metadata and user categories
     await chrome.storage.local.set({ bookmarkMeta: meta, userCategories });
     
+    // Remove duplicates if using clone strategy
+    if (strategy === 'clone') {
+      console.log('Removing duplicates from Smart Bookmarks...');
+      broadcastProgress({ 
+        status: 'running', 
+        done: orgState.total, 
+        total: orgState.total,
+        message: 'Removing duplicates...'
+      });
+      
+      const dedupeResult = await removeDuplicatesFromSmartBookmarks();
+      if (dedupeResult.success) {
+        console.log(`Duplicate removal completed: ${dedupeResult.duplicatesRemoved} duplicates removed`);
+      } else {
+        console.error('Duplicate removal failed:', dedupeResult.error);
+      }
+    }
+    
     // Mark as completed
     orgState.status = 'done';
     orgState.completedAt = Date.now();
@@ -677,7 +695,197 @@ chrome.commands.onCommand.addListener(async (command) => {
   }
 });
 
-// Reset organization state (useful for clearing stuck states)
+// Remove duplicates from Smart Bookmarks folder while keeping originals
+async function removeDuplicatesFromSmartBookmarks() {
+  try {
+    console.log('Starting duplicate removal from Smart Bookmarks...');
+    
+    const smartParentId = await getSmartParentId();
+    const allBookmarks = await getAllBookmarksFlat();
+    
+    // Get all bookmarks in Smart Bookmarks structure
+    const smartBookmarks = [];
+    const regularBookmarks = [];
+    
+    for (const bm of allBookmarks) {
+      const isInSmart = bm.path && bm.path.some(p => p.title === SMART_PARENT);
+      if (isInSmart || bm.parentId === smartParentId) {
+        smartBookmarks.push(bm);
+      } else {
+        regularBookmarks.push(bm);
+      }
+    }
+    
+    console.log(`Found ${smartBookmarks.length} bookmarks in Smart Bookmarks, ${regularBookmarks.length} regular bookmarks`);
+    
+    // Create URL map for regular bookmarks (originals)
+    const originalUrls = new Set();
+    regularBookmarks.forEach(bm => {
+      if (bm.url) {
+        // Normalize URL for comparison
+        const normalizedUrl = normalizeUrl(bm.url);
+        originalUrls.add(normalizedUrl);
+      }
+    });
+    
+    // Find duplicates within Smart Bookmarks
+    const urlToBookmarks = new Map();
+    const duplicatesToRemove = [];
+    
+    smartBookmarks.forEach(bm => {
+      if (!bm.url) return;
+      
+      const normalizedUrl = normalizeUrl(bm.url);
+      const key = `${normalizedUrl}|${(bm.title || '').trim()}`;
+      
+      if (!urlToBookmarks.has(key)) {
+        urlToBookmarks.set(key, []);
+      }
+      urlToBookmarks.get(key).push(bm);
+    });
+    
+    // Also check for URL-only duplicates (different titles, same URL)
+    const urlOnlyMap = new Map();
+    smartBookmarks.forEach(bm => {
+      if (!bm.url) return;
+      
+      const normalizedUrl = normalizeUrl(bm.url);
+      
+      if (!urlOnlyMap.has(normalizedUrl)) {
+        urlOnlyMap.set(normalizedUrl, []);
+      }
+      urlOnlyMap.get(normalizedUrl).push(bm);
+    });
+    
+    // Identify duplicates to remove
+    let duplicatesFound = 0;
+    let duplicatesRemoved = 0;
+    
+    // Process exact matches (same URL and title)
+    for (const [key, bookmarks] of urlToBookmarks) {
+      if (bookmarks.length > 1) {
+        duplicatesFound += bookmarks.length - 1;
+        
+        // Sort by date added (keep the oldest one)
+        bookmarks.sort((a, b) => (a.dateAdded || 0) - (b.dateAdded || 0));
+        
+        // Mark all but the first (oldest) for removal
+        for (let i = 1; i < bookmarks.length; i++) {
+          duplicatesToRemove.push(bookmarks[i]);
+        }
+      }
+    }
+    
+    // Process URL-only matches (same URL, different titles) - more conservative
+    for (const [url, bookmarks] of urlOnlyMap) {
+      if (bookmarks.length > 1) {
+        // Group by title first to avoid removing bookmarks with meaningful title differences
+        const titleGroups = new Map();
+        bookmarks.forEach(bm => {
+          const titleKey = (bm.title || '').trim().toLowerCase();
+          if (!titleGroups.has(titleKey)) {
+            titleGroups.set(titleKey, []);
+          }
+          titleGroups.get(titleKey).push(bm);
+        });
+        
+        // Only remove if there are true duplicates within title groups
+        // or if titles are very similar (indicating true duplicates)
+        for (const [titleKey, titleBookmarks] of titleGroups) {
+          if (titleBookmarks.length > 1) {
+            duplicatesFound += titleBookmarks.length - 1;
+            
+            // Sort by date added (keep the oldest one)
+            titleBookmarks.sort((a, b) => (a.dateAdded || 0) - (b.dateAdded || 0));
+            
+            // Mark all but the first (oldest) for removal
+            for (let i = 1; i < titleBookmarks.length; i++) {
+              // Avoid double-adding to removal list
+              if (!duplicatesToRemove.find(d => d.id === titleBookmarks[i].id)) {
+                duplicatesToRemove.push(titleBookmarks[i]);
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    console.log(`Found ${duplicatesFound} duplicate bookmarks to remove`);
+    
+    // Remove duplicates
+    let duplicatesRemoved = 0;
+    for (const duplicate of duplicatesToRemove) {
+      try {
+        await new Promise((resolve, reject) => {
+          chrome.bookmarks.remove(duplicate.id, () => {
+            if (chrome.runtime.lastError) {
+              console.error(`Failed to remove duplicate ${duplicate.title}:`, chrome.runtime.lastError);
+              reject(chrome.runtime.lastError);
+            } else {
+              duplicatesRemoved++;
+              resolve();
+            }
+          });
+        });
+        
+        // Remove metadata for deleted bookmark
+        const metaStore = await chrome.storage.local.get(['bookmarkMeta']);
+        const meta = metaStore.bookmarkMeta || {};
+        if (meta[duplicate.id]) {
+          delete meta[duplicate.id];
+          await chrome.storage.local.set({ bookmarkMeta: meta });
+        }
+        
+      } catch (error) {
+        console.error(`Failed to remove duplicate bookmark ${duplicate.title}:`, error);
+      }
+    }
+    
+    console.log(`Successfully removed ${duplicatesRemoved} duplicate bookmarks`);
+    
+    return {
+      success: true,
+      duplicatesFound,
+      duplicatesRemoved,
+      smartBookmarksTotal: smartBookmarks.length,
+      originalBookmarksTotal: regularBookmarks.length
+    };
+    
+  } catch (error) {
+    console.error('Failed to remove duplicates:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+// Normalize URL for duplicate detection
+function normalizeUrl(url) {
+  try {
+    const urlObj = new URL(url);
+    
+    // Remove common tracking parameters
+    const paramsToRemove = [
+      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+      'fbclid', 'gclid', 'ref', 'source', 'campaign_id', 'ad_id',
+      'track', 'tracking', 'campaign', 'medium'
+    ];
+    
+    paramsToRemove.forEach(param => {
+      urlObj.searchParams.delete(param);
+    });
+    
+    // Remove trailing slash and www
+    let normalizedUrl = urlObj.toString().replace(/\/$/, '');
+    normalizedUrl = normalizedUrl.replace(/^https?:\/\/www\./, 'https://');
+    
+    return normalizedUrl.toLowerCase();
+  } catch {
+    // If URL parsing fails, return original URL lowercased
+    return url.toLowerCase().trim();
+  }
+}
 async function resetOrganizeState() {
   orgState = {
     status: 'idle',
@@ -703,6 +911,10 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
   }
   if (req.action === 'resetOrganizeState') {
     resetOrganizeState().then(() => sendResponse({ success: true }));
+    return true;
+  }
+  if (req.action === 'removeDuplicates') {
+    removeDuplicatesFromSmartBookmarks().then((result) => sendResponse(result));
     return true;
   }
   if (req.action === 'getProgress') {

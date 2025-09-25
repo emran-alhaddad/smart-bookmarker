@@ -356,6 +356,16 @@
         Move originals (re-file real bookmarks into Smart Bookmarks)
       </label>
       <p class="help-text">Default is “Keep originals”. You can change this anytime.</p>
+      <div class="help-text" style="margin-top: 12px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 3px solid var(--brand-1);">
+        <strong>Duplicate Removal:</strong> When using "Keep originals", duplicates within Smart Bookmarks are automatically removed after organization:
+        <ul style="margin-left: 16px; margin-top: 8px; margin-bottom: 0;">
+          <li>• Identifies identical URLs within Smart Bookmarks folder</li>
+          <li>• Keeps the oldest bookmark (by creation date)</li>
+          <li>• Removes newer duplicates</li>
+          <li>• Never affects original bookmarks outside Smart Bookmarks</li>
+          <li>• Normalizes URLs (removes tracking parameters, www, etc.)</li>
+        </ul>
+      </div>
     </div>
 
     <!-- Categories Management -->

@@ -20,6 +20,7 @@ const gridViewBtn = document.getElementById('gridView');
 const bookmarksGrid = document.getElementById('bookmarksGrid');
 const organizeBtn = document.getElementById('organizeBtn');
 const addCurrentBtn = document.getElementById('addCurrentBtn');
+const removeDuplicatesBtn = document.getElementById('removeDuplicatesBtn');
 const statusEl = document.getElementById('status');
 const progressContainer = document.getElementById('progressContainer');
 const progressBar = document.getElementById('progressBar');
@@ -158,6 +159,33 @@ quickAddBtn.addEventListener('click', async () => {
   }
   quickAddBtn.disabled = false;
   quickAddBtn.innerHTML = '✨';
+});
+
+removeDuplicatesBtn.addEventListener('click', async () => {
+  if (!confirm('Remove duplicate bookmarks from Smart Bookmarks folder? This will keep the oldest copy of each duplicate and remove the rest. Original bookmarks outside Smart Bookmarks will not be affected.')) {
+    return;
+  }
+  
+  removeDuplicatesBtn.disabled = true;
+  removeDuplicatesBtn.innerHTML = '<span class="loading"></span> <span>Removing...</span>';
+  showStatus('Removing duplicate bookmarks...', 'info');
+  
+  try {
+    const result = await chrome.runtime.sendMessage({ action: 'removeDuplicates' });
+    
+    if (result && result.success) {
+      showStatus(`Successfully removed ${result.duplicatesRemoved} duplicate bookmarks!`, 'success');
+      await loadBookmarks();
+      await updateStats();
+    } else {
+      showStatus(`Error removing duplicates: ${result.error || 'Unknown error'}`, 'error');
+    }
+  } catch (e) {
+    showStatus('Error removing duplicates', 'error');
+  }
+  
+  removeDuplicatesBtn.disabled = false;
+  removeDuplicatesBtn.innerHTML = '<span class="btn-icon">🧹</span> <span>Remove Duplicates</span>';
 });
 
 searchInput.addEventListener('input', (e) => {
